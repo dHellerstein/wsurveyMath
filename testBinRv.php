@@ -14,7 +14,6 @@ $ndo=40  ; // number of random variables to to draw
 $binObj=lBin\binomInit($N,$rate);    // initialize a "binomial distribtion" array
 
 
-$ameanRv=array_sum($aa)/$ndo   ;      // some stats for this binomial distribution
 $amean=lBin\binomMean($binObj);
 $asd=lBin\binomSd($binObj);
 $askew=lBin\binom_skewness($binObj);
@@ -24,6 +23,7 @@ $res1=[];                           // draw binomial random variables (counts of
 for ($ido=0;$ido<$ndo;$ido++) {
   $aa[]=lBin\binomRand($binObj);
 }
+$ameanRv=array_sum($aa)/$ndo   ;      // some stats for this binomial distribution
 
 $mess="Simple demo of binomial, and reverse binomial, random variable generation<p> ";
 $mess.="$ndo binomial draws of # of successes (rate=$rate, N=$N).";
