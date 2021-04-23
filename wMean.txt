@@ -1,0 +1,36 @@
+22 April 2021.
+
+Weighted mean and variance of an array of values. With observation selection options.
+
+ $results=wcmp_mean_var($x1,$weights,$selx,$selVal)
+
+  where :
+     x1: array (any style of indices) to compute statistics (mean, sd, #obs) on
+        Non numeric values are dropped.
+
+    weights: weights used when computing stats.
+       If not specified, no weighting.
+       If [], no weighting.
+       If  index (into x1) does not exist in weights, or is non numeric, use a weight of 1
+
+    Note that weights are "normalized" -- so their sum adds to 1 (i.e.; the weights are a discrete probablity distribution function).
+    Thus, the weigths do NOT need to add to 1.0
+
+  selx : selection values (array)
+
+  selVal : selection criteria (scaler)
+     If selx or selval not specified, all values in x1 are used
+     If selx=[], all valeus in x1 are used
+     If an index (into x1) does not exists in selx, the value is used
+     Otherwise, if selx[i]<>selval, the observation is dropped (not used)
+     Not used observations are NOT included in the "# of obs used" returned value
+
+Returns array: [mean, variance, #of obs used, cumulative weight]
+
+ Tecnhical notes:
+
+  *  When computing means and vairiabes weighting means "replicating rows" --
+     so a weight of 2 implies "there are two observations identical to this one"
+     Fractional weights are allowed (such  as 3.561)
+
+  * Since this creates internal copies of x1, it is not particularly efficient.

@@ -1,0 +1,111 @@
+22 April 2021.
+
+Search and sort functions.
+
+Note: "matrix" refers to an array of arrays.  
+      The outer array must be standard array (with indices from 0,1...).
+      The inner arrays can be associative arrays.
+
+Example:
+  $m1[0]=[1,12,551,661];
+  $m1[1]]=[6,62,612,21]
+or
+  $m1[0]=['weight'=>100,'height'>=52];
+  $m1[1]=['weight'=>150,'height'>=12];
+
+
+ --- Function list ---
+
+ $newMatrix=merge_ordered($m1,m2,$ith)
+
+  Quick merge of two matrices, using  column $ith (in each matrix) to determine merging.
+  By default, $ith=0.
+  Both matrices must be sorted in increasing order (on the $ith column)
+  Returned matrix is combination of m1 and m2, sorted on column ith.
+
+
+ $iMatch=binarySearchMatrix($Barray,$Bvalue,$jcol,$Bleft,$Bright)
+    Binary search in a sorted matrix.
+
+
+     Barray : the matrix to search within
+     Bvalue : the value to search for
+     jcol : the column of the matrix to search. If jcol not specified, or <0) matrix is a simple array.
+     Bleft and Bright:  limit search to Barray[Bleft] to Barrary[Bright]. By default, search the entire matrix.
+               If Bleft=0 and Bright=-1, search entire matrix.
+
+    Returns index (iMatch), s.t. Barray[iMatch]<=Bvalue<Barray[iMatch+1]
+
+    Special cases for imatch:
+        -1 if  Bvalue<Barray[0],
+        count($Barray)-1 if Bvalue>end(Barray)  ...
+
+     Note: the matrix (or array) must already be sorted on the jcol column (other columns do not need to be sorted)
+
+
+ $iMatch= binarySearchIndex($Barray,$Bvalue,$afunc)
+   Binary search in a sorted array, with custom comparison.  This is similar to  binarySearchMatrix.
+
+     Barray : the array to search within
+     Bvalue : the value to search for
+     afunc: a function to use to determine sort order. If not specified, then standard
+
+    If $f is specified, it is called with 2 arguments:
+        $afunc(Barray[icheck],$Bvalue)      (check the value of Barray[icheck] against Bvalue)
+     and must return: -1,0, or 1  --
+        -1 : Barray[icheck]<Bvalue, 0 if = , 1 if >
+
+   Notes:
+     * For example, $Barray could be a matrix, and afunc could check the value of the 3rd column.
+     * it is up to the caller to be sure that the arguments types expected by $f are the same types provided as the
+        arguments to binarySearch
+
+   As with binarySearchMatrix returns
+       -1 if  (Bvalue<Barray[0],
+        count($Barray)-1 if end(Barray)>Bvalue ...
+        otherwise iMatch s.t. Barray[iMatch]<=Bvalue<Barray[iMatch+1]
+
+ $res=grSearch($f0,$a0,$b0,$xtol=1e-5)
+
+    Given a function f with a single local minimum in the interval [a0,b0]
+       grSearch returns a subset interval  that contains the minimum.
+
+     $f : function to minimize.  MUST be an anonymous function declared BEFORE this is called, that accepts one or two arguments
+          Or: a 2 element array: $f[0] = the anonymous function, $f[1] = other argument(s)
+     $a0 : low end of range   (x values)
+     $b0  : upper end of range
+     $xtol : stop if  the two "golden rule points"  are less that this distance apart.
+             The subset interval will be a bit larger than this
+            If not specified, 1e-5 is used.
+            Special case: if $xtol<0, $xtol is the number of steps to take.
+
+  Returns:
+     [$x0,$x1,$y,$n,$stopHow]
+       x0 and x1 : the top and bottom of the range (within which the search stopped
+       y : the value at the stopping x
+       n : number of steps taken
+       stopHow:  stop condition code
+             0 : a0 and b0 are close, so just analyze at a0 and return
+             1 : xtol met. Return value at x0
+             2 :  xtol met. Return value at x1
+             3 :  max (or specified) iterations. Return value at x0
+             4 :  max (or specified) iterations. Return value at x1
+
+  Note: this is adapted from https://en.wikipedia.org/wiki/Golden-section_search
+       See testGrSearch.php for a simple example.
+
+
+ $newArray=array_msort($array,$colSortInstructions,$sortType)
+    Sort a matrix on several columns. This is a front end to array_msort
+
+      $array: the associative array to sort
+
+      $colSortInstructions: an associative array congaining instructions on how to sort $array -- which columns to sort on first, in what order
+                           Each element in this array is  'colName'=>sortOrder
+                           sortOrder is either SORT_ASC or SORT_DESC (php constants, so do NOT preced with a $)
+
+      $sortType: optional. The type of sort (string, numeric, etc)
+                           This can be one of: SORT_REGULAR, SORT_NUMERICl, SORT_STRING, SORT_LOCALE_STRING, SORT_NATURAL, SORT_FLAG_CASE (acan be OR with SORT_STRING or SORT_NATURAL)
+                           If not specified, SORT_REGULAR is used
+
+   Returns sorted array. Thus, $array is NOT changed.

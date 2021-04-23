@@ -1,0 +1,174 @@
+22 April 2021.
+Binomial random variable generation functions.
+
+Several php functions that will generate binomially distributed random variables.
+
+Define:
+   standard binomial pdf: pdf=bin(m;r,N) -- probability of drawing m given n and N.
+   reverse binomial pdf: pdf=rbin(r;m,N) -- probablity that the underlying rate is r, given m and N.
+
+The functions here will generate a vector of random variables from either distribution.
+For both distributions, a mix of importance sampling and discrete approximations to the binomial are used to speed up
+generation of large arrays (hundreds or thousands of rows).
+
+Usage:
+ In your php program, assuming all the files in this release are in the same directory as this php file.
+
+    require('ws_binomial.php' );
+    require('ws_rbinomial.php' );
+
+    use \wSurvey\math\binomial as lBin ;       // or whatever alias you prefer
+    use \wSurvey\math\rbinomial as lRbin ;
+
+Example: testBinRv.php contains a simple demonstration of both binomial and reverse binomial random variable generation.
+
+Note: these functions use log gamma functions provided by the gBurtini library.
+
+Function list:
+
+   Note that in ones actual code, one would precede these functions with a namespace alias.
+
+   For example:$binObj=lBin\binomInit($n,$p) ;
+
+
+  -- For the "standard" Binomial --
+
+ $bObj=binomInit($n,$p)  : initialize
+    n=# trials, p=prob success.
+    bObj is used in other functions
+
+ aProb=binomPdf($bObj,$k,$puse)      : lookup pdf probablity
+
+    2 arguments :
+       bObj (as created by binomInit) : the #trials and the success rate
+       k  : number of successes
+    3 arguments:
+       bObj : # of trials (integer)
+       k  : # of succese  (integer
+       puse : prob of success (float)
+
+ $rv=binomRand($bObj,$useImp,$attempts,$nsd)     .... randomly draw a binomially distributed value
+      useImp, $attempts, and $nsd are optional
+
+      $bObj : as created by binomInit
+      $useImp: how to create
+        0 : use repeated bernoulli (slow, especifially if #trials is large)
+        1  use importance sampling. (faster)
+        2 : use importance sampling 2 steps -- first step uses CDF lookup in "fat" region (defined mode  +/=  m*sd)
+           Otherwise use importance sampling ON THE NON-FAT region. THIS IS TEH DEFAULT
+       3: choose 0 or 2 (if n<1000, use 0)
+    attempts: number of times to try if 1 or 2. If no success, use repeated bernoulli.  If 0, use max of 5 and  4*sqrt(n)
+    nsd:  number of sds (used in method 2) . < 0 means auto choose (typically about 3.1)
+
+  Other functions:
+
+    binomMean($bObj)
+    binomSd($bObj)
+    binom_skewness($bObj);
+    binom_kurtosis($bObj)
+
+ -- For the reverse binomial --
+
+  $rbObj=rbinomPdf_init($N,m)  -- intialize reverse binomial using $N events and $m successes
+  $prob=rbinomPdf($rbObj,$rate)  -- pdf of reverse binomial, at rate =$rate (given $N and $m specifed in $rbObj
+
+ 
+  $rbinSpecs=rbinom_rv_init($m,$N,$minPdfBound,$yjumpMax,$maxRecurse,$nSds,$maxTries); -
+
+  Intialize a "discrete distribution", and other specs, given m and N. $rbinSpecs is meant to be used in rbinom_rv()
+
+  Everything after $N is optional
+
+       minPdfBound  : (Defaultvalue 0.0001) -- used to set the range of support for pRates.
+                Chooses a pRate (lower & upper bound) s.t.  rbin(pRateL;m,N) < minPdfBound
+                This should be small, especially if m/N <0.1  (
+                A "after range of support" bin is added that uses this as the height, and if this is small the bin area can be quite large (in cdf terms)
+                Note: we do NOT recommend using a value less than the default (1e-7).
+
+       yJumpMax : (defalue value=0.015) -- used to fill in values in  a discrete distribution.
+                  The discrete distribution is used to roughly approximate the target continuous reverse binomial pdf.
+                  This discrete distribution is used to efficiently draw rvs (using importance sampling) from the desired reverse binomial.
+                  Points (pRate(i) are added to this discrete s.t.  rbin(pRate_i) - rbin(pRate(i-1)) < yJumpMax ---
+                   where i=0..N are  N points (between bounds of 0.0 and 1.0) that are defined for this discrete distirbution.
+                   Note that for very tight distributions, this may not be achieved -- see the maxRecurse parameter
+        Smaller values of these parameters lead to more points in the discrete distribution. This may lead to fewer attempts used to
+        find the nRvs values. However, each attempt might take longer.
+
+     $maxRecurse : (default=6) how many times to go through the discrete distribution.  Larger values make it more likely to achieve the yJumpMax
+                 target, but will also require longer initialization time.
+
+     $nSds : (default =2) values to always include in the discrete distribution  obsRate + (and -) 1..nSds standard deviations
+             Using the binomial sd (standard deviation) of m at obsRate and N:  compute and use pRates calculated
+                    as m +/- j* sd ; where (j=1...nSds);
+             More values might help select from tight ( large m and N) rbin distributions. Too large will add unuseful proprocessing time
+             Note: at pRate =0.0 or 1.0; since sd is NOT defined. Hence, nSds is not used (and  1/($N-sqrt($N)) is used to start bounds search).
+
+     $maxTries  : (default= $nRvs*10). If 0, default is used).  Maximum number of attempts to find the desired number of rvs (in
+                  rbinom_rv). If the discrete distribution poorly matches the underlying reverse binomial, importance sampling can fail frequently
+                  This limits the number of attempts. Once this limit is hit, the array of rvs is returned (even if it is length is < $nRvs)
+
+   $minBins : (default=0). If not 0, the minimum numbef of bins -- rows in disceteDist.
+              If the normal algorithim does not yield this many bins, yJumpMax is decrease and another recursion is done.
+
+   $useRates : (default=[]) : array of rates which should be included in discreteDist. If empty, no extra rates adde.
+                 A csv is converted into an array
+
+   $method : default=1 ; 0=test (return rbinomPdf_init info), 1=discreteDist assisted importance sample (the default), 2:raw important sample, 3:cdf lookup
+
+   xMinMult and xMaxMult : (default 1 and 1) not supported in arguments. Supported in altenative calling method.
+                           After finding min and max (that satisfy minPdfBound, multiply the min by xMinMult and the max by xMaxMult
+                                 (constraining to fall within 0.0 and 1.0)
+                           Return these in rbinSpecs (rangeLowest and rangeHighest)
+                           xMinMult and xMaxMult are only used for method=3 (cdf lookup)
+
+ Returns associative array  that is used by  rbinom_rv.
+ One of the fields is 'discreteDist' :an array of "points of support" for the discrete distribution used to pull random variables from
+
+   Each row is a "bin" (one could think of it as a bin in a histogram) -- consisiting of an array with 6 values:
+    [0] - pvalue -- candidate value
+    [1] - rbinomial pdf value (at pvalue)
+    [2] - width of bin (pvalue to pvalue of  next bin)
+    [3] - height of bin  (max of [1] of this and [1] of next bin. For last bin, just use this bins [1]
+    [4] - area of bin (width [2] * [3]
+    [5] - normalized cumulative area  of [4] -- this is used in binary searches (for a value between 0 and 1)
+
+   rbinSpecs['cdfList'] is returned if also be added -- an 'evenly' (and closely) space matrix of values from the range of support of the rbinomial
+    [0] : rate
+    [1] : nomralized [df
+    [2] : cumulative cdf
+    [3] : original (non-normalized) pdf
+
+   Alternative calling method (recommended)
+
+       rbinom_rv_init($m,$N,$options) --
+
+  where options is associative array with the arguments (case insensitive) described above.
+
+   if options is specified, the other arguments  (arg 4,...) are ignored
+   If an option is NOT specified in options, defaults are used.
+
+ $varray=  rbinom_rv($nRvs,$v1,$v2,$simple)
+
+  Generate an array (of length nRvs) of  0.0  to 1.0 pRates -- where the probablity of choosing a pRate (for inclusion in the array
+  is based on the reverseBinomial formed given m successes in N trials+_
+
+     $nRvs : Number of random variables to create
+     $v1 : either the rbinSpecs (from a call to rbinom_rv_init. Or m (number of successes);
+     $v2 : if v1=m, this must be N (# of events). If v1 is rBinSpecs -- this is ignored.
+     $simple: if 1, then do NOT use discrete distribution -- simple importance sampling.
+             Note that simple improtance sampling is used if method=2 (in _init)
+ Returns associative arrayct with these fields:
+          'rvs' : array of rvs selected from the reverse binomial specificaton (specified by v1 and v2)
+          'nTrys'  : number of attempts need to finds these rvs.  If >= $maxtries, count($rvs) usually < $nRvs
+          'nbad' : number of bad attempts -- importance sample failure due to reverse binomial pdf of candidate rate > "discrete distribution"  pdf
+                    If > 0, probably should use a differnt "discrete distribution" (re call rbinom_rv_init)
+
+ Notes:
+     If maxTries (default is 10*$nRvs, or you can specify in rbinSpces) is close to nRvs, or the specification is troublesome
+     (a low m/N and a low N), rvs might not have nRvs rows
+
+
+
+   =========================
+
+Daniel Hellerstein  danielh@crosslink.net
