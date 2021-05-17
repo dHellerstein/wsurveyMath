@@ -191,7 +191,10 @@ if ($rmethod==3) {
 // select, using binary search within cumulative cdf one of the bins (between k1 and k2, to shorten region of binary search)
 
      $rvBin=ss\binarySearchMatrix($discreteDist,$afind,5) ; // ,$k1,$k2)  ;     // what "bin"  of the discreteDistro to look in (from bins k1 to k2) -- speed up search a bit
-
+     if ($rvBin>=count($discreteDist)-1) {  // rare case of outside range (10 may 2021 fix)
+        $nbad++;
+        continue;
+    }
      $tt=rbinomial_fromBin($rvBin,$discreteDist,$afind );                   // what point in this bin?
 
      $rvBinPoint=$tt[0] ; $binPdf=$tt[1];                    // the point, and the bin's probability
